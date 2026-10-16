@@ -39,7 +39,7 @@
         }
         @else if (view === "form") {
             <div style="display: flex; justify-content: space-between;">
-                <h2>Ajouter un étudiant</h2>
+                <h2>{{ action === 'add' ? 'Ajouter un étudiant' : 'Mettre à jour ' + studentForm.value.firstName + ' ' + studentForm.value.lastName }}</h2>
                 <button (click)="getListStudent()">Voir la liste des étudiants</button>
             </div>
             <form [formGroup]="studentForm" (ngSubmit)="onSubmit()">
@@ -72,7 +72,7 @@
                             [ngClass]="{ 'is-invalid': submitted && form['login'].errors }"
                     />
                 </div>
-                <button type="submit" class="btn btn-primary">Ajouter</button>
+                <button type="submit" class="btn btn-primary">{{ action === 'add' ? 'Ajouter' : 'Mettre à jour' }}</button>
             </form>
         }
         @else {

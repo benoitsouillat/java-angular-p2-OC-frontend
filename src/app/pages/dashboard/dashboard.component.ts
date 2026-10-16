@@ -18,15 +18,16 @@ export class DashboardComponent {
   private studentService: StudentService = inject(StudentService);
   private formBuilder: FormBuilder = inject(FormBuilder);
   private destroyRef: DestroyRef = inject(DestroyRef);
-  private token = localStorage.getItem('userToken') || '';
+  private token = 'Bearer ' + localStorage.getItem('userToken') || '';
   studentForm: FormGroup = new FormGroup({});
   students: UserInfoDTO[] = [];
   view: string = '';
+  action: string = '';
   submitted: boolean = false;
 
   getListStudent() {
     this.view = 'list';
-    this.userService.getListStudent('Bearer ' + this.token)
+    this.userService.getListStudent(this.token)
         .subscribe({
             next: (response) => {
                 this.students = response;
@@ -39,6 +40,7 @@ export class DashboardComponent {
 
   addStudent() {
     this.view = 'form';
+    this.action = 'add';
     this.studentForm = this.formBuilder.group({
         firstName: ['', Validators.required],
         lastName: ['', Validators.required],
@@ -46,10 +48,11 @@ export class DashboardComponent {
     });
   }
 
-  /** TODO : Gérer l'injection de deux formulaire différents - Recherche bonne pratique Angular en matière de formulaire */
   editStudent(student: UserInfoDTO) {
     this.view = 'form';
+    this.action = 'edit';
     this.studentForm = this.formBuilder.group({
+        id: [student.id], // Comment ne pas passer l'id dans le formulaire mais le garder pour la requête de mise à jour ?
         firstName: [student.firstName, Validators.required],
         lastName: [student.lastName, Validators.required],
         login: [student.login, [Validators.required, Validators.email]],
@@ -97,22 +100,19 @@ export class DashboardComponent {
           alert('Veuillez remplir tous les champs requis correctement.');
           return;
       }
-      this.studentService
-          .createStudent({
-              firstName: this.studentForm.value.firstName,
-              lastName: this.studentForm.value.lastName,
-              login: this.studentForm.value.login
-          },
-          'Bearer ' + this.token
-          )
-          .pipe(takeUntilDestroyed(this.destroyRef))
+      const student = this.studentForm.value;
+      const request$ = this.action === 'add'
+          ? this.studentService.createStudent(student, this.token)
+          : this.studentService.updateStudent(student, this.token);
+
+      request$.pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
               next: (response) => {
-                  alert('Étudiant ajouté avec succès !');
+                  alert('Action réussie !');
                   this.getListStudent();
               },
               error: (error) => {
-                  console.log(error);
+                  console.error(error);
                   switch (error.status){
                         case 400:
                             alert('[' + error.status + '] Requête invalide. Veuillez vérifier les informations saisies.');
