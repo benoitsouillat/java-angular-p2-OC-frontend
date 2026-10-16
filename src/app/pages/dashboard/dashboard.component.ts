@@ -1,11 +1,139 @@
-import { Component } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators} from '@angular/forms';
+import { UserService } from "../../core/service/user.service";
+import { UserInfoDTO } from "../../core/DTO/userInfoDTO";
+import { CommonModule } from "@angular/common";
+import { MaterialModule } from "../../shared/material.module";
+import {StudentService} from "../../core/service/student.service";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 @Component({
   selector: 'app-dashboard',
-  imports: [],
+  imports: [CommonModule, MaterialModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent {
+  private userService: UserService = inject(UserService);
+  private studentService: StudentService = inject(StudentService);
+  private formBuilder: FormBuilder = inject(FormBuilder);
+  private destroyRef: DestroyRef = inject(DestroyRef);
+  private token = localStorage.getItem('userToken') || '';
+  studentForm: FormGroup = new FormGroup({});
+  students: UserInfoDTO[] = [];
+  view: string = '';
+  submitted: boolean = false;
 
+  getListStudent() {
+    this.view = 'list';
+    this.userService.getListStudent('Bearer ' + this.token)
+        .subscribe({
+            next: (response) => {
+                this.students = response;
+            },
+          error: (error) => {
+              alert('Erreur lors de la récupération de la liste des étudiants. Veuillez réessayer.');
+          }
+        });
+  }
+
+  addStudent() {
+    this.view = 'form';
+    this.studentForm = this.formBuilder.group({
+        firstName: ['', Validators.required],
+        lastName: ['', Validators.required],
+        login: ['', [Validators.required, Validators.email]],
+    });
+  }
+
+  /** TODO : Gérer l'injection de deux formulaire différents - Recherche bonne pratique Angular en matière de formulaire */
+  editStudent(student: UserInfoDTO) {
+    this.view = 'form';
+    this.studentForm = this.formBuilder.group({
+        firstName: [student.firstName, Validators.required],
+        lastName: [student.lastName, Validators.required],
+        login: [student.login, [Validators.required, Validators.email]],
+    });
+  }
+
+  deleteStudent(studentId: number) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet étudiant ?')) {
+        this.studentService.deleteStudent(studentId, 'Bearer ' + this.token)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: (response) => {
+                    alert('Étudiant supprimé avec succès !');
+                    this.getListStudent();
+                },
+                error: (error) => {
+                    console.log(error);
+                    switch (error.status){
+                        case 400:
+                            alert('[' + error.status + '] Requête invalide. Veuillez vérifier les informations saisies.');
+                            break;
+                        case 401:
+                            alert('[' + error.status + '] Non autorisé. Veuillez vous reconnecter.');
+                            break;
+                        case 403:
+                            alert('[' + error.status + '] Accès refusé. Vous n\'avez pas les permissions nécessaires.');
+                            break;
+                        case 404:
+                            alert('[' + error.status + '] Ressource non trouvée -- Erreur de endpoint. Veuillez réessayer plus tard.');
+                            break;
+                        default:
+                            alert('[' + error.status + '] Erreur lors de la suppression de l\'étudiant. Veuillez réessayer.');                            break;
+                    }
+                }
+            });
+    }
+  }
+
+  get form() {
+      return this.studentForm.controls;
+  }
+  onSubmit() {
+      this.submitted = true;
+      if (this.studentForm.invalid) {
+          alert('Veuillez remplir tous les champs requis correctement.');
+          return;
+      }
+      this.studentService
+          .createStudent({
+              firstName: this.studentForm.value.firstName,
+              lastName: this.studentForm.value.lastName,
+              login: this.studentForm.value.login
+          },
+          'Bearer ' + this.token
+          )
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+              next: (response) => {
+                  alert('Étudiant ajouté avec succès !');
+                  this.getListStudent();
+              },
+              error: (error) => {
+                  console.log(error);
+                  switch (error.status){
+                        case 400:
+                            alert('[' + error.status + '] Requête invalide. Veuillez vérifier les informations saisies.');
+                            break;
+                        case 401:
+                            alert('[' + error.status + '] Non autorisé. Veuillez vous reconnecter.');
+                            break;
+                        case 403:
+                            alert('[' + error.status + '] Accès refusé. Vous n\'avez pas les permissions nécessaires.');
+                            break;
+                        case 404:
+                            alert('[' + error.status + '] Ressource non trouvée -- Erreur de endpoint. Veuillez réessayer plus tard.');
+                            break;
+                        default:
+                            alert('[' + error.status + '] Erreur lors de l\'ajout de l\'étudiant. Veuillez réessayer.');                            break;
+                  }
+              }
+          });
+  }
+  onReset(): void {
+      this.submitted = false;
+      this.studentForm.reset();
+  }
 }

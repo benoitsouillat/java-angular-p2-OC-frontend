@@ -45,7 +45,6 @@ export class LoginComponent implements OnInit {
       login: this.loginForm.get('login')?.value || '',
       password: this.loginForm.get('password')?.value || ''
     };
-    const response = this.userService.login(loginUser);
     this.userService.login(loginUser)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
