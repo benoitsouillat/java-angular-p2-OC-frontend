@@ -61,7 +61,7 @@ export class DashboardComponent {
 
   deleteStudent(studentId: number) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cet étudiant ?')) {
-        this.studentService.deleteStudent(studentId, 'Bearer ' + this.token)
+        this.studentService.deleteStudent(studentId, this.token)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
                 next: (response) => {
